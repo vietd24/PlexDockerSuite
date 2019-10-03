@@ -1,0 +1,61 @@
+version: '3'
+services:
+  plex:
+    container_name: plex_main
+    image: linuxserver/plex
+    restart: unless-stopped
+    ports:
+      - 32400:32400/tcp
+      - 3005:3005/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+    environment:
+      - VERSION=docker
+    hostname: RPI-Docker 
+    volumes:
+      - ./plexdata/plexmediaserver:/config
+      - ./plexdata/transcode:/transcode
+      - /certs:/certs
+      - /mnt/Datengrab:/mnt/Datengrab:shared
+    networks:
+      - backend
+      - frontend
+  tautulli:
+    container_name: plex_tautulli
+    image: linuxserver/tautulli
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+    volumes:
+      - ./tautulli/config:/config
+      - ./tautulli/logs:/logs
+      - /certs:/certs
+    ports:
+      - 8181
+    links:
+      - plex
+    networks:
+      - backend
+  nginx:
+    container_name: plex_nginx
+    build: ./nginx/
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - /certs:/etc/nginx/ssl
+    links:
+      - plex
+      - tautulli
+    depends_on:
+      - plex
+      - tautulli
+    restart: unless-stopped
+    networks:
+      - backend
+      - frontend
+networks: 
+  frontend:
+    internal: false 
+  backend:
+    internal: true
